@@ -1,0 +1,23 @@
+
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>BURA – Paletta alapú csomagoló kalkulátor</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#1e3a8a">
+  <link rel="apple-touch-icon" href="icon-192.png">
+</head>
+<body>
+  <h1>BURA Kalkulátor működik!</h1>
+  <p>Ezt a verziót tedd fel GitHub Pages-re.</p>
+  <script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js');
+    });
+  }
+  </script>
+</body>
+</html>
