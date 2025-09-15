@@ -1,23 +1,219 @@
-
 <!doctype html>
 <html lang="hu">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>BURA – Paletta alapú csomagoló kalkulátor</title>
-  <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#1e3a8a">
-  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BURA – Paletta alapú csomagoló mini kalkulátor</title>
+  <style>
+    :root{
+      --bg:#0f172a; --card:#111827; --muted:#9ca3af; --fg:#e5e7eb; --accent:#22c55e;
+    }
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Inter,Arial,sans-serif;background:var(--bg);color:var(--fg);} 
+    .wrap{max-width:860px;margin:0 auto;padding:20px;}
+    .title{font-size:1.5rem;font-weight:700;margin:6px 0 16px}
+    .card{background:var(--card);border:1px solid #1f2937;border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+    .grid{display:grid;gap:12px}
+    @media(min-width:720px){.grid.cols-2{grid-template-columns:1fr 1fr}}
+    label{font-size:.9rem;color:var(--muted)}
+    input[type=number], select{width:100%;padding:10px;border-radius:10px;border:1px solid #374151;background:#0b1220;color:var(--fg)}
+    .btn{appearance:none;border:0;border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer}
+    .btn.primary{background:var(--accent);color:#052e16}
+    .btn.ghost{background:#0b1220;border:1px solid #374151;color:var(--fg)}
+    .tbl{width:100%;border-collapse:collapse;margin-top:8px}
+    .tbl th,.tbl td{border-bottom:1px solid #1f2937;padding:8px;text-align:left}
+    .kpi{display:grid;gap:10px;grid-template-columns:repeat(2,1fr)}
+    @media(min-width:720px){.kpi{grid-template-columns:repeat(4,1fr)}}
+    .kpi .box{background:#0b1220;border:1px solid #1f2937;border-radius:10px;padding:10px}
+    .kpi .h{font-size:.8rem;color:var(--muted)}
+    .kpi .v{font-size:1.2rem;font-weight:700;margin-top:4px}
+    /* Összegzés doboz kiemelése */
+    #summary {background:#1e3a8a;border:3px solid #facc15;color:#fef9c3;box-shadow:0 0 20px #facc15;}
+    #summary .v {color:#facc15;font-size:1.4rem;}
+  </style>
 </head>
 <body>
-  <h1>BURA Kalkulátor működik!</h1>
-  <p>Ezt a verziót tedd fel GitHub Pages-re.</p>
-  <script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js');
-    });
+  <div class="wrap">
+    <div class="title">BURA – Paletta alapú csomagoló kalkulátor</div>
+
+    <div class="card">
+      <div>
+        <label>LOT típus</label>
+        <select id="lotType">
+          <option value="2.5">2,5 kg</option>
+          <option value="1">1 kg</option>
+        </select>
+      </div>
+      <div class="grid cols-2" style="margin-top:12px">
+        <div>
+          <label>7 magas paletták (db) – 63 karton/paletta</label>
+          <input id="p7" type="number" min="0" step="1" value="0" />
+        </div>
+        <div>
+          <label>6 magas paletták (db) – 54 karton/paletta</label>
+          <input id="p6" type="number" min="0" step="1" value="0" />
+        </div>
+        <div>
+          <label>Karton / egyedi paletta (db)</label>
+          <input id="extraCartons" type="number" min="0" step="1" value="0" />
+        </div>
+        <div>
+          <label>Zacskó / karton (db)</label>
+          <input id="bagsPerCarton" type="number" min="1" step="1" value="4" />
+        </div>
+        <div>
+          <label>Zacskó súlya (kg/db)</label>
+          <input id="bagWeight" type="number" min="0" step="0.00001" value="0.01698" />
+        </div>
+        <div>
+          <label>Termék fólia veszteség (kg)</label>
+          <input id="bagWaste" type="number" min="0" step="0.001" value="0" />
+        </div>
+        <div>
+          <label>Stretch fólia 7 magas (kg/paletta)</label>
+          <input id="film7Unit" type="number" min="0" step="0.0001" value="0.27" />
+        </div>
+        <div>
+          <label>Stretch fólia 6 magas (kg/paletta)</label>
+          <input id="film6Unit" type="number" min="0" step="0.0001" value="0.25027" />
+        </div>
+      </div>
+      <div style="margin-top:10px">
+        <button class="btn primary" id="calcBtn">Számolás</button>
+        <button class="btn ghost" id="resetBtn">Törlés</button>
+      </div>
+    </div>
+
+    <!-- ÖSSZEFOGLALÓ DOBOZ -->
+    <div class="card" id="summary">
+      <div style="font-weight:700;margin-bottom:8px">Összegzés</div>
+      <div class="kpi" style="grid-template-columns:repeat(3,1fr)">
+        <div class="box"><div class="h">Termék fólia összes (kg)</div><div class="v" id="sumBagTotal">0</div></div>
+        <div class="box"><div class="h">Stretch fólia összes (kg)</div><div class="v" id="sumStretchTotal">0</div></div>
+        <div class="box"><div class="h">Banda ragasztó (kg)</div><div class="v" id="sumTapeKg">0</div></div>
+        <div class="box"><div class="h">Címke (db)</div><div class="v" id="sumLabels">0</div></div>
+        <div class="box"><div class="h">Doboz / karton (db)</div><div class="v" id="sumCartons">0</div></div>
+        <div class="box"><div class="h">Paletta (db)</div><div class="v" id="sumPallets">0</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="kpi">
+        <div class="box"><div class="h">Összes paletta</div><div class="v" id="kpiPallets">0</div></div>
+        <div class="box"><div class="h">Összes karton</div><div class="v" id="kpiCartons">0</div></div>
+        <div class="box"><div class="h">Belső csomag (db)</div><div class="v" id="kpiBags">0</div></div>
+        <div class="box"><div class="h">Összes termék fólia (kg)</div><div class="v" id="kpiFilm">0</div></div>
+      </div>
+
+      <table class="tbl" id="materials">
+        <thead>
+          <tr><th>Anyag</th><th>Darab</th><th>Tömeg (kg)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Zacskó</td><td id="bagsCount">0</td><td id="bagsKg">0</td></tr>
+          <tr><td>Fólia veszteség</td><td>–</td><td id="bagsWaste">0</td></tr>
+          <tr><td><b>Összes termék fólia</b></td><td>–</td><td id="bagsTotal">0</td></tr>
+          <tr><td>Stretch fólia (7 magas)</td><td id="film7Count">0</td><td id="film7Kg">0</td></tr>
+          <tr><td>Stretch fólia (6 magas)</td><td id="film6Count">0</td><td id="film6Kg">0</td></tr>
+          <tr><td><b>Összes stretch fólia</b></td><td>–</td><td id="filmTotalKg">0</td></tr>
+          <tr><td>Banda ragasztó</td><td id="tapeCount">0</td><td id="tapeKg">0</td></tr>
+          <tr><td>Címke</td><td id="labelCount">0</td><td>–</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const lotType=document.getElementById('lotType');
+  const p7=document.getElementById('p7');
+  const p6=document.getElementById('p6');
+  const extraCartons=document.getElementById('extraCartons');
+  const bagsPerCarton=document.getElementById('bagsPerCarton');
+  const bagWeight=document.getElementById('bagWeight');
+  const bagWaste=document.getElementById('bagWaste');
+  const film7Unit=document.getElementById('film7Unit');
+  const film6Unit=document.getElementById('film6Unit');
+
+  const KPI=id=>document.getElementById(id);
+
+  function format(n){return (Math.round((Number(n)||0)*1000)/1000).toLocaleString('hu-HU');}
+
+  function updateLotDefaults(){
+    if(lotType.value==="2.5"){
+      bagsPerCarton.value=4;
+      bagWeight.value=0.01698;
+    } else {
+      bagsPerCarton.value=10;
+      bagWeight.value=0.0088;
+    }
   }
-  </script>
+
+  function calc(){
+    const n7=parseInt(p7.value||'0',10);
+    const n6=parseInt(p6.value||'0',10);
+    const extra=parseInt(extraCartons.value||'0',10);
+    const perC=parseInt(bagsPerCarton.value||'0',10);
+    const bagKg=parseFloat(bagWeight.value||'0');
+    const wasteKg=parseFloat(bagWaste.value||'0');
+    const film7=parseFloat(film7Unit.value||'0');
+    const film6=parseFloat(film6Unit.value||'0');
+
+    const cartons=n7*63+n6*54+extra;
+    const bags=cartons*perC;
+
+    const bagsKg=bagKg*bags;
+    const bagsTotal=bagsKg+wasteKg;
+
+    const pallets=n7+n6;
+
+    const film7Kg=n7*film7;
+    const film6Kg=n6*film6;
+    const filmTotalKg=film7Kg+film6Kg;
+    const tapeKg=pallets*0.057;
+    const labelCount=pallets*3+(pallets>0?1:0);
+
+    KPI('kpiPallets').textContent=pallets;
+    KPI('kpiCartons').textContent=cartons;
+    KPI('kpiBags').textContent=bags;
+    KPI('kpiFilm').textContent = format(bagsTotal);
+
+    // Összegző doboz
+    KPI('sumBagTotal').textContent = format(bagsTotal);
+    KPI('sumStretchTotal').textContent = format(filmTotalKg);
+    KPI('sumTapeKg').textContent = format(tapeKg);
+    KPI('sumLabels').textContent = labelCount;
+    KPI('sumCartons').textContent = cartons;
+    KPI('sumPallets').textContent = pallets;
+
+    KPI('bagsCount').textContent=bags;
+    KPI('bagsKg').textContent=format(bagsKg);
+    KPI('bagsWaste').textContent=format(wasteKg);
+    KPI('bagsTotal').textContent=format(bagsTotal);
+
+    KPI('film7Count').textContent=n7;
+    KPI('film7Kg').textContent=format(film7Kg);
+    KPI('film6Count').textContent=n6;
+    KPI('film6Kg').textContent=format(film6Kg);
+    KPI('filmTotalKg').textContent=format(filmTotalKg);
+
+    KPI('tapeCount').textContent=pallets;
+    KPI('tapeKg').textContent=format(tapeKg);
+    KPI('labelCount').textContent=labelCount;
+  }
+
+  lotType.addEventListener('change',updateLotDefaults);
+  document.getElementById('calcBtn').addEventListener('click',calc);
+  document.getElementById('resetBtn').addEventListener('click',()=>{
+    p7.value=p6.value=extraCartons.value=0;
+    bagWaste.value=0;
+    film7Unit.value=0.27;
+    film6Unit.value=0.25027;
+    updateLotDefaults();
+    calc();
+  });
+  updateLotDefaults();
+  calc();
+})();
+</script>
 </body>
 </html>
